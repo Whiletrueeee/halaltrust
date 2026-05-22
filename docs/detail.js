@@ -8,6 +8,18 @@ const typeLabel = {
   slaughterhouses: "屠宰场详情"
 };
 
+const certLabel = {
+  strict: "严选认证",
+  verified: "已核验",
+  community: "社区推荐"
+};
+
+const sourceTypeLabel = {
+  slaughterhouse: "合规屠宰场",
+  supplier: "清真供应商",
+  "restaurant-direct": "餐厅直采"
+};
+
 const defaultCover = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(`
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420">
     <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#073f2e"/><stop offset="1" stop-color="#c99434"/></linearGradient></defs>
@@ -132,6 +144,17 @@ function render(data) {
   const cover = item.coverImage || defaultCover;
   const source = data.source;
   const related = data.relatedRestaurants || [];
+  const infoGrid = data.type === "restaurants" ? `
+    ${infoItem("电话", item.phone)}
+    ${infoItem("地址", item.address || `${item.city || ""} ${item.district || ""}`.trim())}
+    ${infoItem("合规级别", certLabel[item.certificationLevel] || item.certificationLevel)}
+    ${infoItem("来源类型", sourceTypeLabel[item.sourceType] || item.sourceType)}
+  ` : `
+    ${infoItem("电话", item.phone)}
+    ${infoItem("地址", item.address || `${item.city || ""} ${item.district || ""}`.trim())}
+    ${infoItem("认证 / 审核", item.certifier || item.auditor || item.certificationLevel)}
+    ${infoItem("证书 / 日期", item.certificateNo || item.lastAudit || item.validUntil)}
+  `;
 
   document.querySelector("#detailRoot").innerHTML = `
     <section class="detail-hero">
@@ -146,10 +169,7 @@ function render(data) {
     <section class="detail-section">
       <h2>基础信息</h2>
       <div class="detail-info-grid">
-        ${infoItem("电话", item.phone)}
-        ${infoItem("地址", item.address || `${item.city || ""} ${item.district || ""}`.trim())}
-        ${infoItem("认证 / 审核", item.certifier || item.auditor || item.certificationLevel)}
-        ${infoItem("证书 / 日期", item.certificateNo || item.lastAudit || item.validUntil)}
+        ${infoGrid}
       </div>
       <p class="detail-intro">${escapeHtml(intro)}</p>
     </section>

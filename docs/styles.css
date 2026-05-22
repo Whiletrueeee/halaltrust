@@ -293,7 +293,7 @@ select {
 }
 
 .stats-strip {
-  display: grid;
+  display: none;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
@@ -344,6 +344,31 @@ select {
 
 .content-grid.admin-mode .map-pane {
   display: none;
+}
+
+.content-grid.search-mode {
+  grid-template-columns: 1fr;
+}
+
+.content-grid.search-mode .map-pane {
+  position: static;
+  order: -1;
+}
+
+.content-grid.search-mode .map-toolbar {
+  display: none;
+}
+
+.content-grid.search-mode .map-canvas {
+  min-height: clamp(16rem, 32vh, 23rem);
+}
+
+.content-grid.search-mode .detail-panel {
+  display: none;
+}
+
+.content-grid.search-mode .results-area {
+  order: 1;
 }
 
 .admin-area {
@@ -1179,7 +1204,7 @@ select {
   .nav-list {
     display: grid;
     flex: none;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 
   .nav-item[data-view="admin"] {

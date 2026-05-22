@@ -1,5 +1,5 @@
 const state = {
-  view: "restaurants",
+  view: "search",
   meta: null,
   restaurants: [],
   sources: [],
@@ -49,6 +49,8 @@ const els = {
   certSelect: document.querySelector("#certSelect"),
   sourceTypeSelect: document.querySelector("#sourceTypeSelect"),
   cuisineSelect: document.querySelector("#cuisineSelect"),
+  searchBand: document.querySelector(".search-band"),
+  statsStrip: document.querySelector(".stats-strip"),
   searchInput: document.querySelector("#searchInput"),
   restaurantCount: document.querySelector("#restaurantCount"),
   sourceCount: document.querySelector("#sourceCount"),
@@ -263,6 +265,10 @@ function textLines(value) {
   return String(value || "").split(/[\n,，]/).map((item) => item.trim()).filter(Boolean);
 }
 
+function menuTextLines(value) {
+  return menuArrayToRows(value).map((item) => [item.name, item.price].filter(Boolean).join(" · "));
+}
+
 function detailGallery(title, images) {
   const safeImages = images || [];
   return `
@@ -283,12 +289,16 @@ function renderEntityDetail(item, type, extra = {}) {
     return;
   }
   const intro = item.summary || item.traceability || extra.intro || "暂无简介";
-  const menu = textLines(item.menu?.length ? item.menu : extra.menu);
+  const menu = item.menu?.length ? menuTextLines(item.menu) : textLines(extra.menu);
   els.detailPanel.innerHTML = `
     <div class="detail-cover">${coverMarkup(item, type, item.name)}</div>
     <h3>${escapeHtml(item.name)}</h3>
     <p><strong>电话：</strong>${escapeHtml(item.phone || "待补充")}</p>
     <p><strong>地址：</strong>${escapeHtml(item.address || `${item.city || ""} ${item.district || ""}`.trim() || "待补充")}</p>
+    ${type === "restaurants" ? `
+      <p><strong>合规级别：</strong>${escapeHtml(certLabel[item.certificationLevel] || item.certificationLevel || "待补充")}</p>
+      <p><strong>来源类型：</strong>${escapeHtml(sourceTypeLabel[item.sourceType] || item.sourceType || "待补充")}</p>
+    ` : ""}
     <p>${escapeHtml(intro)}</p>
     <div class="detail-block">
       <h4>${type === "restaurants" ? "菜单" : "服务 / 菜单项"}</h4>
@@ -840,6 +850,7 @@ async function staticApiJson(path, method, body) {
 }
 
 function setOptions(select, options, placeholder, mapper = (item) => [item, item]) {
+  if (!select) return;
   const html = [`<option value="">${placeholder}</option>`]
     .concat(options.map((item) => {
       const [value, label] = mapper(item);
@@ -859,14 +870,22 @@ function escapeHtml(value) {
   })[char]);
 }
 
-function paramsFromFilters() {
+function paramsFromSearchFilters() {
   const params = new URLSearchParams();
   if (els.provinceSelect.value) params.set("province", els.provinceSelect.value);
   if (els.citySelect.value) params.set("city", els.citySelect.value);
   if (els.districtSelect.value) params.set("district", els.districtSelect.value);
-  if (els.certSelect.value) params.set("certification", els.certSelect.value);
-  if (els.sourceTypeSelect.value) params.set("sourceType", els.sourceTypeSelect.value);
   if (els.cuisineSelect.value) params.set("cuisine", els.cuisineSelect.value);
+  if (els.searchInput.value.trim()) params.set("q", els.searchInput.value.trim());
+  return params;
+}
+
+function paramsFromDirectoryFilters(includeCuisine = false) {
+  const params = new URLSearchParams();
+  if (els.provinceSelect.value) params.set("province", els.provinceSelect.value);
+  if (els.citySelect.value) params.set("city", els.citySelect.value);
+  if (els.districtSelect.value) params.set("district", els.districtSelect.value);
+  if (includeCuisine && els.cuisineSelect.value) params.set("cuisine", els.cuisineSelect.value);
   if (els.searchInput.value.trim()) params.set("q", els.searchInput.value.trim());
   return params;
 }
@@ -884,9 +903,9 @@ async function loadMeta() {
   await loadAdminSources();
   initAdminLocationSelects();
   updateDistricts();
-  els.restaurantCount.textContent = state.meta.stats.restaurants;
-  els.sourceCount.textContent = state.meta.stats.verifiedSources;
-  els.slaughterhouseCount.textContent = state.meta.stats.slaughterhouses;
+  if (els.restaurantCount) els.restaurantCount.textContent = state.meta.stats.restaurants;
+  if (els.sourceCount) els.sourceCount.textContent = state.meta.stats.verifiedSources;
+  if (els.slaughterhouseCount) els.slaughterhouseCount.textContent = state.meta.stats.slaughterhouses;
   els.apiStatus.textContent = state.staticMode ? "静态数据" : "已连接";
 }
 
@@ -1076,7 +1095,7 @@ function searchAmapLocation(query) {
 }
 
 async function loadRestaurants() {
-  const params = paramsFromFilters();
+  const params = state.view === "search" ? paramsFromSearchFilters() : paramsFromDirectoryFilters(true);
   const data = await api(`/api/restaurants?${params.toString()}`);
   state.restaurants = data.items;
   state.selected = data.items[0] || null;
@@ -1091,10 +1110,7 @@ async function loadAdminSources() {
 }
 
 async function loadSources() {
-  const params = new URLSearchParams();
-  if (els.provinceSelect.value) params.set("province", els.provinceSelect.value);
-  if (els.citySelect.value) params.set("city", els.citySelect.value);
-  if (els.searchInput.value.trim()) params.set("q", els.searchInput.value.trim());
+  const params = state.view === "search" ? paramsFromSearchFilters() : paramsFromDirectoryFilters();
   const data = await api(`/api/sources?${params.toString()}`);
   state.sources = data.items;
   renderSources(data.items);
@@ -1102,18 +1118,14 @@ async function loadSources() {
 }
 
 async function loadSlaughterhouses() {
-  const params = new URLSearchParams();
-  if (els.provinceSelect.value) params.set("province", els.provinceSelect.value);
-  if (els.citySelect.value) params.set("city", els.citySelect.value);
-  if (els.districtSelect.value) params.set("district", els.districtSelect.value);
-  if (els.searchInput.value.trim()) params.set("q", els.searchInput.value.trim());
+  const params = state.view === "search" ? paramsFromSearchFilters() : paramsFromDirectoryFilters();
   const data = await api(`/api/slaughterhouses?${params.toString()}`);
   state.slaughterhouses = data.items;
   renderSlaughterhouses(data.items);
   renderMap(data.items);
 }
 
-function setView(view) {
+async function setView(view) {
   if (view === "admin" && !requestAdminAccess()) return;
   resetPage();
   state.view = view;
@@ -1121,6 +1133,7 @@ function setView(view) {
     button.classList.toggle("active", button.dataset.view === view);
   });
   const labels = {
+    search: ["定位搜索", "附近清真餐厅"],
     restaurants: ["餐厅目录", "附近清真餐厅"],
     sources: ["肉源核验", "合规来源记录"],
     slaughterhouses: ["屠宰场", "合规屠宰场档案"],
@@ -1130,7 +1143,10 @@ function setView(view) {
   els.viewTitle.textContent = labels[view][1];
   els.adminArea.hidden = view !== "admin";
   els.contentGrid.classList.toggle("admin-mode", view === "admin");
-  refresh();
+  els.contentGrid.classList.toggle("search-mode", view === "search");
+  if (els.searchBand) els.searchBand.hidden = view !== "search";
+  if (els.statsStrip) els.statsStrip.hidden = true;
+  await refresh();
 }
 
 function requestAdminAccess() {
@@ -1146,6 +1162,7 @@ function requestAdminAccess() {
 }
 
 async function refresh() {
+  if (state.view === "search") await loadRestaurants();
   if (state.view === "restaurants") await loadRestaurants();
   if (state.view === "sources") await loadSources();
   if (state.view === "slaughterhouses") await loadSlaughterhouses();
@@ -1157,7 +1174,7 @@ function renderRestaurants(items) {
   const { pageItems, totalPages } = paginate(sortedItems);
   els.resultTotal.textContent = `${items.length} 家`;
   if (!sortedItems.length) {
-    els.resultsList.innerHTML = `<div class="empty-state">没有找到匹配的清真餐厅，可以调整城市、级别或关键词。</div>`;
+    els.resultsList.innerHTML = `<div class="empty-state">没有找到匹配的清真餐厅，可以调整城市、行政区、菜系或关键词。</div>`;
     return;
   }
   els.resultsList.innerHTML = pageItems.map((item, index) => `
@@ -1715,7 +1732,7 @@ function bindEvents() {
     button.addEventListener("click", () => setView(button.dataset.view));
   });
 
-  [els.certSelect, els.sourceTypeSelect, els.cuisineSelect].forEach((select) => {
+  [els.cuisineSelect].filter(Boolean).forEach((select) => {
     select.addEventListener("change", refresh);
   });
 
@@ -1854,7 +1871,7 @@ async function init() {
   try {
     await loadAmapIfConfigured();
     await loadMeta();
-    await loadRestaurants();
+    await setView("search");
     requestCurrentLocation();
   } catch (error) {
     els.apiStatus.textContent = "连接失败";

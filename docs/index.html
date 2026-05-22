@@ -19,8 +19,12 @@
         </div>
 
         <nav class="nav-list">
-          <button class="nav-item active" data-view="restaurants" type="button">
+          <button class="nav-item active" data-view="search" type="button">
             <span class="nav-icon">⌖</span>
+            定位搜索
+          </button>
+          <button class="nav-item" data-view="restaurants" type="button">
+            <span class="nav-icon">☰</span>
             餐厅目录
           </button>
           <button class="nav-item" data-view="sources" type="button">
@@ -82,21 +86,13 @@
               <select id="districtSelect"></select>
             </label>
             <label>
-              合规级别
-              <select id="certSelect"></select>
-            </label>
-            <label>
-              来源类型
-              <select id="sourceTypeSelect"></select>
-            </label>
-            <label>
               菜系
               <select id="cuisineSelect"></select>
             </label>
           </div>
         </section>
 
-        <section class="stats-strip" aria-label="目录概况">
+        <section class="stats-strip" aria-label="目录概况" hidden>
           <div>
             <span id="restaurantCount">0</span>
             <p>合规餐厅</p>
@@ -111,7 +107,7 @@
           </div>
         </section>
 
-        <div class="content-grid">
+        <div class="content-grid search-mode">
           <section class="results-area" aria-live="polite">
             <div class="section-heading">
               <div>
